@@ -1,5 +1,8 @@
 # TwoSemi C++ prototype
 
+Project page: <https://anmism.github.io/twosemi/>
+Source: <https://github.com/anmism/twosemi>
+
 This is the first native Windows milestone described in `project.md`:
 
 - tray icon and single-instance behavior
@@ -47,6 +50,8 @@ cpack --config build\CPackConfig.cmake -G NSIS -B dist
 This creates `dist\TwoSemi-0.1.0-win64.exe`. Share that installer with users; they can install, launch, and uninstall TwoSemi through the normal Windows flow.
 
 The installer does not remove `%LOCALAPPDATA%\TwoSemi`, so notes, chats, settings, and encrypted model keys remain available after uninstall or upgrade.
+
+GitHub Actions builds the Windows packages on pushes, pull requests, and `v*` tags. A tag such as `v0.1.0` publishes the installer and ZIP as a GitHub Release. The Pages workflow publishes the plain HTML site from `docs/`; enable **Settings > Pages > Source: GitHub Actions** once in the repository.
 
 The launcher shows creation actions first, followed by view actions and a mixed list of notes, reminders, todo groups, streaks, and chats. `View notes` and `View reminders` open focused lists for those item types. Select a todo group with `Enter` to open its tasks; use `Alt` + `Left` to return to the launcher.
 
