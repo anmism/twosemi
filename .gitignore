@@ -1,0 +1,46 @@
+# Build directory
+build/
+dist/
+package/
+_CPack_Packages/
+*.zip
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Visual Studio
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+.vs/
+out/
+x64/
+x86/
+Debug/
+Release/
+
+# Compiled objects
+*.o
+*.obj
+*.exe
+*.dll
+*.lib
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.exp
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+project.md
+
+.claude
