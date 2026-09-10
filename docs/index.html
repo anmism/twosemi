@@ -1,54 +1,373 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-  "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TwoSemi</title>
+  <style>
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-Light.ttf'); font-weight: 300; font-style: normal; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-LightItalic.ttf'); font-weight: 300; font-style: italic; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-Regular.ttf'); font-weight: 400; font-style: normal; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-RegularItalic.ttf'); font-weight: 400; font-style: italic; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-Book.ttf'); font-weight: 450; font-style: normal; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-BookItalic.ttf'); font-weight: 450; font-style: italic; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-SemiBold.ttf'); font-weight: 600; font-style: normal; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-SemiBoldItalic.ttf'); font-weight: 600; font-style: italic; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-Bold.ttf'); font-weight: 700; font-style: normal; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-Black.ttf'); font-weight: 900; font-style: normal; }
+    @font-face { font-family: 'Messina'; src: url('fonts/MessinaSans-BlackItalic.ttf'); font-weight: 900; font-style: italic; }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #fff;
+      color: #111;
+      font-family: 'Messina', sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 48px;
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 10;
+    }
+
+    nav .brand {
+      font-family: 'Messina', sans-serif;
+      font-size: 18px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #111;
+    }
+
+    nav .links {
+      display: flex;
+      gap: 32px;
+      align-items: center;
+    }
+
+    nav .links a {
+      font-family: 'Messina', sans-serif;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #111;
+    }
+
+    nav .links a:hover { color: #888; }
+
+    nav .links a.btn {
+      border: 1.5px solid #111;
+      padding: 8px 20px;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    nav .links a.btn:hover {
+      background: #111;
+      color: #fff;
+    }
+
+    .hero {
+      display: flex;
+      align-items: stretch;
+      min-height: 80vh;
+    }
+
+    .hero-text {
+      flex: 1;
+      padding: 120px 48px 80px;
+      display: flex;
+      align-items: flex-end;
+    }
+
+    .hero h1 {
+      font-size: clamp(48px, 7vw, 96px);
+      font-weight: normal;
+      line-height: 1.05;
+      letter-spacing: -2px;
+      max-width: 700px;
+    }
+
+    .hero-graphic {
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      grid-template-rows: repeat(6, 1fr);
+      gap: 3px;
+    }
+
+    .hero-graphic span {
+      transition: opacity 0.3s;
+    }
+
+    .hero-graphic span:nth-child(6n+1) { background: #e8f0e4; }
+    .hero-graphic span:nth-child(6n+2) { background: #dde8f0; }
+    .hero-graphic span:nth-child(6n+3) { background: #f0e8dd; }
+    .hero-graphic span:nth-child(6n+4) { background: #f0dde8; }
+    .hero-graphic span:nth-child(6n+5) { background: #e4e8f0; }
+    .hero-graphic span:nth-child(6n+6) { background: #f0ece4; }
+
+    .hero-graphic span:nth-child(1)  { opacity: 0.2; }
+    .hero-graphic span:nth-child(2)  { opacity: 0.3; }
+    .hero-graphic span:nth-child(3)  { opacity: 0.5; }
+    .hero-graphic span:nth-child(7)  { opacity: 0.3; }
+    .hero-graphic span:nth-child(8)  { opacity: 0.5; }
+    .hero-graphic span:nth-child(9)  { opacity: 0.7; }
+    .hero-graphic span:nth-child(13) { opacity: 0.5; }
+    .hero-graphic span:nth-child(14) { opacity: 0.7; }
+    .hero-graphic span:nth-child(15) { opacity: 1; }
+    .hero-graphic span:nth-child(20) { opacity: 0.7; }
+    .hero-graphic span:nth-child(21) { opacity: 1; }
+    .hero-graphic span:nth-child(26) { opacity: 0.8; }
+    .hero-graphic span:nth-child(27) { opacity: 1; }
+    .hero-graphic span:nth-child(32) { opacity: 0.6; }
+    .hero-graphic span:nth-child(33) { opacity: 0.9; }
+    .hero-graphic span:nth-child(34) { opacity: 0.4; }
+    .hero-graphic span:nth-child(35) { opacity: 0.7; }
+    .hero-graphic span:nth-child(36) { opacity: 0.3; }
+
+    .hero-desc {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 64px 48px 96px;
+      gap: 48px;
+    }
+
+    .hero-desc p {
+      font-size: clamp(20px, 2.5vw, 28px);
+      line-height: 1.45;
+      max-width: 680px;
+      color: #111;
+    }
+
+    .hero-desc .cta {
+      flex-shrink: 0;
+      font-family: 'Messina', sans-serif;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-decoration: none;
+      color: #111;
+      border: 1.5px solid #111;
+      padding: 12px 28px;
+      white-space: nowrap;
+      align-self: center;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .hero-desc .cta:hover {
+      background: #111;
+      color: #fff;
+    }
+
+    .img-section {
+      padding: 0 48px 96px;
+    }
+
+    .img-section img {
+      width: 100%;
+      display: block;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2px;
+      padding: 0;
+      background: #fff;
+    }
+
+    .feature {
+      padding: 48px;
+      min-height: 240px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .feature:nth-child(1) { background: #e8f0e4; }
+    .feature:nth-child(2) { background: #dde8f0; }
+    .feature:nth-child(3) { background: #f0e8dd; }
+    .feature:nth-child(4) { background: #f0dde8; }
+    .feature:nth-child(5) { background: #e4e8f0; }
+    .feature:nth-child(6) { background: #f0ece4; }
+
+    .feature h3 {
+      font-family: 'Messina', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #111;
+      margin-bottom: 12px;
+    }
+
+    .feature p {
+      font-size: 15px;
+      line-height: 1.55;
+      color: #333;
+      max-width: 36ch;
+    }
+
+    .stats {
+      padding: 80px 48px;
+      display: flex;
+      gap: 80px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .stat h4 {
+      font-size: clamp(36px, 5vw, 56px);
+      font-weight: normal;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .stat span {
+      font-family: 'Messina', sans-serif;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #999;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 48px;
+    }
+
+    footer span {
+      font-family: 'Messina', sans-serif;
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    footer .links {
+      display: flex;
+      gap: 24px;
+    }
+
+    footer .links a {
+      font-family: 'Messina', sans-serif;
+      font-size: 12px;
+      color: #999;
+      text-decoration: none;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    footer .links a:hover { color: #111; }
+
+    @media (max-width: 768px) {
+      nav { padding: 16px 24px; }
+      nav .links { gap: 16px; }
+      .hero { flex-direction: column; min-height: auto; }
+      .hero-text { padding: 64px 24px 32px; }
+      .hero h1 { letter-spacing: -1px; }
+      .hero-graphic { min-height: 200px; }
+      .hero-desc { flex-direction: column; padding: 0 24px 48px; gap: 24px; }
+      .img-section { padding: 0 24px 64px; }
+      .features { grid-template-columns: 1fr; }
+      .feature { padding: 32px 24px; min-height: 180px; }
+      .stats { padding: 48px 24px; flex-wrap: wrap; gap: 40px; }
+      footer { padding: 20px 24px; }
+    }
+  </style>
 </head>
-<body bgcolor="#ffffff" text="#000000" link="#0000cc" vlink="#551a8b">
-<table width="760" border="0" cellspacing="0" cellpadding="8" align="center">
-  <tr>
-    <td>
-      <p>
-        <img src="icon.png" width="48" height="48" alt="TwoSemi icon" align="middle">
-        <font face="Arial, Helvetica, sans-serif" size="+2"><b>TwoSemi</b></font>
-      </p>
+<body>
 
-      <hr>
+  <nav>
+    <a class="brand" href="#">TwoSemi</a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="https://github.com/anmism/twosemi">Source</a>
+      <a class="btn" href="https://github.com/anmism/twosemi/releases">Download</a>
+    </div>
+  </nav>
 
-      <p><font face="Verdana, Arial, sans-serif">
-        A small keyboard-first productivity utility for Windows.
-      </font></p>
+  <div class="hero">
+    <div class="hero-text">
+      <h1>Your whole workflow, one keystroke away</h1>
+    </div>
+    <div class="hero-graphic"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  </div>
 
-      <pre>Ctrl + ;   Ctrl + ;</pre>
+  <div class="hero-desc">
+    <p>TwoSemi is a keyboard-first utility that lives in your system tray. Notes, reminders, todos, streaks, and AI chat from a single launcher that appears and disappears with a double-tap.</p>
+    <a class="cta" href="https://github.com/anmism/twosemi/releases">Download now</a>
+  </div>
 
-      <p><font face="Verdana, Arial, sans-serif">
-        Notes. Reminders. Todos. Focus mode. Streaks. Saved AI chats.
-      </font></p>
 
-      <h3><font face="Arial, Helvetica, sans-serif">Download</font></h3>
-      <p><font face="Verdana, Arial, sans-serif">
-        Get the latest Windows installer from
-        <a href="https://github.com/anmism/twosemi/releases">GitHub Releases</a>.
-      </font></p>
+  <div class="features" id="features">
+    <div class="feature">
+      <h3>Notes</h3>
+      <p>Capture text from whatever you're doing or type something new. Secrets are encrypted with Windows DPAPI and never leave your device.</p>
+    </div>
+    <div class="feature">
+      <h3>Reminders</h3>
+      <p>Set a time, get a system notification. Snooze or complete from the launcher. No account, no sync, no server.</p>
+    </div>
+    <div class="feature">
+      <h3>Todos</h3>
+      <p>Group tasks by project. Toggle completion with a keystroke. Simple enough to not get in the way of the actual work.</p>
+    </div>
+    <div class="feature">
+      <h3>Streaks</h3>
+      <p>Track daily or weekday habits. Check in from the launcher. See your current run and best run at a glance.</p>
+    </div>
+    <div class="feature">
+      <h3>AI Chat</h3>
+      <p>Saved conversations with Gemini. Bring your own API key, pick a model, threads persist locally between sessions.</p>
+    </div>
+    <div class="feature">
+      <h3>Local First</h3>
+      <p>Everything stays on your machine in a single SQLite database. No telemetry, no accounts, no cloud.</p>
+    </div>
+  </div>
 
-      <h3><font face="Arial, Helvetica, sans-serif">Source</font></h3>
-      <p><font face="Verdana, Arial, sans-serif">
-        TwoSemi is open source.
-        <a href="https://github.com/anmism/twosemi">View the source code</a>.
-      </font></p>
+  <div class="stats">
+    <div class="stat">
+      <h4>Ctrl+;;</h4>
+      <span>To open, from anywhere</span>
+    </div>
+    <div class="stat">
+      <h4>Offline</h4>
+      <span>Your data never leaves</span>
+    </div>
+    <div class="stat">
+      <h4>Instant</h4>
+      <span>No loading, no waiting</span>
+    </div>
+    <div class="stat">
+      <h4>Yours</h4>
+      <span>No account required</span>
+    </div>
+    <div class="stat">
+      <h4>&lt;1MB</h4>
+      <span>The whole thing</span>
+    </div>
+  </div>
 
-      <h3><font face="Arial, Helvetica, sans-serif">Status</font></h3>
-      <p><font face="Verdana, Arial, sans-serif">
-        Early native C++ build. Windows only.
-      </font></p>
+  <footer>
+    <span>twosemi &middot; anmism</span>
+    <div class="links">
+      <a href="https://github.com/anmism/twosemi/releases">Download</a>
+      <a href="https://github.com/anmism/twosemi">GitHub</a>
+    </div>
+  </footer>
 
-      <hr>
-      <p><font face="Arial, Helvetica, sans-serif" size="-1">
-        TwoSemi &middot; anmism
-      </font></p>
-    </td>
-  </tr>
-</table>
 </body>
 </html>
