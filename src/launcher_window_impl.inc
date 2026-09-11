@@ -101,6 +101,7 @@ void LauncherWindow::OpenTodoGroup(const std::wstring& group_id) {
     todo_group_view_ = true;
     todo_groups_view_ = false;
     note_view_ = false;
+    link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
     chat_view_ = false;
@@ -114,6 +115,7 @@ void LauncherWindow::OpenTodoGroups() {
     todo_group_view_ = false;
     todo_groups_view_ = true;
     note_view_ = false;
+    link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
     chat_view_ = false;
@@ -127,6 +129,7 @@ void LauncherWindow::OpenNotes() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = true;
+    link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
     chat_view_ = false;
@@ -136,10 +139,25 @@ void LauncherWindow::OpenNotes() {
     ActivateAndFocus(window_, search_);
 }
 
+void LauncherWindow::OpenLinks() {
+    todo_group_view_ = false;
+    todo_groups_view_ = false;
+    note_view_ = false;
+    link_view_ = true;
+    reminder_view_ = false;
+    streak_view_ = false;
+    chat_view_ = false;
+    view_title_ = L"twosemi :: links";
+    SetWindowTextW(search_, L"");
+    Refresh();
+    ActivateAndFocus(window_, search_);
+}
+
 void LauncherWindow::OpenReminders() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    link_view_ = false;
     reminder_view_ = true;
     streak_view_ = false;
     chat_view_ = false;
@@ -153,6 +171,7 @@ void LauncherWindow::OpenStreaks() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    link_view_ = false;
     reminder_view_ = false;
     streak_view_ = true;
     chat_view_ = false;
@@ -166,6 +185,7 @@ void LauncherWindow::OpenChats() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
     chat_view_ = true;
@@ -237,10 +257,22 @@ void LauncherWindow::Refresh() {
         all_items.push_back({LauncherItemKind::NewNote, L"New note", L"Create a note from the current selection or typed text", 0});
         for (size_t index = 0; index < notes_.size(); ++index) {
             const Note& note = notes_[index];
+            if (note.kind == Note::Kind::Link) {
+                continue;
+            }
             const std::wstring detail = note.kind == Note::Kind::Secret
                                             ? (note.secret_available ? L"Secret note" : L"Secret note unavailable")
                                             : NotePreview(note.body);
             all_items.push_back({LauncherItemKind::Note, note.title, detail, index});
+        }
+    } else if (link_view_) {
+        all_items.push_back({LauncherItemKind::NewLink, L"New link", L"Save a web link with an optional description", 0});
+        for (size_t index = 0; index < notes_.size(); ++index) {
+            const Note& note = notes_[index];
+            if (note.kind != Note::Kind::Link) {
+                continue;
+            }
+            all_items.push_back({LauncherItemKind::Note, note.title, NotePreview(note.url), index});
         }
     } else if (reminder_view_) {
         all_items.push_back({LauncherItemKind::NewReminder, L"New reminder", L"Schedule a reminder", 0});
@@ -273,11 +305,14 @@ void LauncherWindow::Refresh() {
         todo_group_view_ = false;
         todo_groups_view_ = false;
         note_view_ = false;
+        link_view_ = false;
         reminder_view_ = false;
         streak_view_ = false;
         chat_view_ = false;
         all_items.push_back({LauncherItemKind::NewNote, L"New note", L"Create a note from the current selection or typed text", 0});
         all_items.push_back({LauncherItemKind::ViewNotes, L"View notes", L"Open saved notes", 0});
+        all_items.push_back({LauncherItemKind::NewLink, L"New link", L"Save a web link with an optional description", 0});
+        all_items.push_back({LauncherItemKind::ViewLinks, L"View links", L"Open saved web links", 0});
         all_items.push_back({LauncherItemKind::NewReminder, L"New reminder", L"Schedule a reminder", 0});
         all_items.push_back({LauncherItemKind::ViewReminders, L"View reminders", L"Open scheduled reminders", 0});
         if (app_->FocusActive()) {
@@ -307,7 +342,8 @@ void LauncherWindow::Refresh() {
             const Note& note = notes_[index];
             const std::wstring detail = note.kind == Note::Kind::Secret
                                             ? (note.secret_available ? L"Secret note" : L"Secret note unavailable")
-                                            : NotePreview(note.body);
+                                            : note.kind == Note::Kind::Link ? NotePreview(note.url)
+                                                                            : NotePreview(note.body);
             all_items.push_back({LauncherItemKind::Note, note.title, detail, index});
         }
         for (size_t index = 0; index < reminders_.size(); ++index) {
@@ -375,6 +411,7 @@ void LauncherWindow::UpdateHint() {
     if (const LauncherItem* item = SelectedItem(); item != nullptr) {
         switch (item->kind) {
         case LauncherItemKind::NewNote:
+        case LauncherItemKind::NewLink:
         case LauncherItemKind::NewReminder:
         case LauncherItemKind::NewTodoGroup:
         case LauncherItemKind::NewStreak:
@@ -383,6 +420,7 @@ void LauncherWindow::UpdateHint() {
             hint = L"Enter create";
             break;
         case LauncherItemKind::ViewNotes:
+        case LauncherItemKind::ViewLinks:
         case LauncherItemKind::ViewReminders:
         case LauncherItemKind::ViewTodoGroups:
         case LauncherItemKind::ViewStreaks:
@@ -403,7 +441,9 @@ void LauncherWindow::UpdateHint() {
             hint = L"Enter stop";
             break;
         case LauncherItemKind::Note:
-            hint = L"Enter fill  |  Ctrl+Enter edit  |  Del remove";
+            hint = item->index < notes_.size() && notes_[item->index].kind == Note::Kind::Link
+                       ? L"Enter open  |  Ctrl+Enter edit  |  Del remove"
+                       : L"Enter fill  |  Ctrl+Enter edit  |  Del remove";
             break;
         case LauncherItemKind::Reminder:
             hint = L"Enter edit  |  Del remove";
@@ -422,7 +462,7 @@ void LauncherWindow::UpdateHint() {
             break;
         }
     }
-    if (todo_group_view_ || todo_groups_view_ || note_view_ || reminder_view_ || streak_view_ || chat_view_) {
+    if (todo_group_view_ || todo_groups_view_ || note_view_ || link_view_ || reminder_view_ || streak_view_ || chat_view_) {
         hint += L"  |  Alt+Left back";
     }
     SetWindowTextW(hint_, hint.c_str());
@@ -458,6 +498,9 @@ void LauncherWindow::ExecuteSelected() {
     case LauncherItemKind::NewNote:
         BeginNewNoteEditor();
         return;
+    case LauncherItemKind::NewLink:
+        BeginNewLinkEditor();
+        return;
     case LauncherItemKind::NewReminder:
         BeginNewReminderEditor();
         return;
@@ -487,6 +530,9 @@ void LauncherWindow::ExecuteSelected() {
     case LauncherItemKind::ViewNotes:
         OpenNotes();
         return;
+    case LauncherItemKind::ViewLinks:
+        OpenLinks();
+        return;
     case LauncherItemKind::ViewReminders:
         OpenReminders();
         return;
@@ -514,6 +560,7 @@ void LauncherWindow::ExecuteSelected() {
             todo_group_view_ = true;
             todo_groups_view_ = false;
             note_view_ = false;
+            link_view_ = false;
             reminder_view_ = false;
             streak_view_ = false;
             chat_view_ = false;
@@ -582,13 +629,14 @@ void LauncherWindow::GoBack() {
         CancelEditor();
         return;
     }
-    if (!todo_group_view_ && !todo_groups_view_ && !note_view_ && !reminder_view_ &&
+    if (!todo_group_view_ && !todo_groups_view_ && !note_view_ && !link_view_ && !reminder_view_ &&
         !streak_view_ && !chat_view_) {
         return;
     }
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
     chat_view_ = false;
@@ -842,6 +890,7 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                 SetBkMode(draw->hDC, TRANSPARENT);
                 const LauncherItemKind kind = launcher->items_[index].kind;
                 const bool is_action = kind == LauncherItemKind::NewNote ||
+                                       kind == LauncherItemKind::NewLink ||
                                        kind == LauncherItemKind::NewReminder ||
                                        kind == LauncherItemKind::StartFocus ||
                                        kind == LauncherItemKind::FocusStatus ||
@@ -852,6 +901,7 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                                        kind == LauncherItemKind::NewStreak ||
                                        kind == LauncherItemKind::NewChat ||
                                        kind == LauncherItemKind::ViewNotes ||
+                                       kind == LauncherItemKind::ViewLinks ||
                                        kind == LauncherItemKind::ViewReminders ||
                                        kind == LauncherItemKind::ViewStreaks ||
                                        kind == LauncherItemKind::ViewChats ||
@@ -859,7 +909,12 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                                        kind == LauncherItemKind::NewTodoTask;
                 wchar_t marker = L'-';
                 if (is_action) marker = L'+';
-                if (kind == LauncherItemKind::Note) marker = L'N';
+                if (kind == LauncherItemKind::Note) {
+                    marker = launcher->items_[index].index < launcher->notes_.size() &&
+                                     launcher->notes_[launcher->items_[index].index].kind == Note::Kind::Link
+                                 ? L'L'
+                                 : L'N';
+                }
                 if (kind == LauncherItemKind::Reminder) marker = L'R';
                 if (kind == LauncherItemKind::TodoGroup || kind == LauncherItemKind::TodoTask) marker = L'T';
                 if (kind == LauncherItemKind::Streak) marker = L'S';

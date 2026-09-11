@@ -1,6 +1,7 @@
 struct NoteDraft {
     std::wstring title;
     std::wstring body;
+    std::wstring url;
     Note::Kind kind = Note::Kind::Text;
     bool accepted = false;
     bool done = false;
@@ -8,6 +9,7 @@ struct NoteDraft {
     HWND title_edit = nullptr;
     HWND type_label = nullptr;
     HWND body_edit = nullptr;
+    HWND url_edit = nullptr;
     HWND body_label = nullptr;
     HWND kind_combo = nullptr;
     HWND save_button = nullptr;

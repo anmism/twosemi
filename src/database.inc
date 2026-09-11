@@ -17,6 +17,7 @@ public:
                      "Id TEXT PRIMARY KEY NOT NULL,"
                      "Title TEXT NOT NULL,"
                      "Body TEXT NOT NULL,"
+                     "Url TEXT NOT NULL DEFAULT '',"
                      "Kind INTEGER NOT NULL DEFAULT 0,"
                      "CreatedAtUtc TEXT NOT NULL,"
                      "UpdatedAtUtc TEXT NOT NULL,"
@@ -109,6 +110,15 @@ public:
                 }
             }
             if (database_ != nullptr) {
+                if (!HasColumn(L"url") &&
+                    !Execute(legacy_schema_
+                                 ? "ALTER TABLE notes ADD COLUMN url TEXT NOT NULL DEFAULT '';"
+                                 : "ALTER TABLE notes ADD COLUMN Url TEXT NOT NULL DEFAULT '';")) {
+                    sqlite3_close(database_);
+                    database_ = nullptr;
+                }
+            }
+            if (database_ != nullptr) {
                 if (!HasTableColumn("chat_messages", L"AttachmentPath") &&
                     !Execute("ALTER TABLE chat_messages ADD COLUMN AttachmentPath TEXT NULL;")) {
                     sqlite3_close(database_);
@@ -143,8 +153,8 @@ public:
 
         sqlite3_stmt* statement = nullptr;
         const char* sql = legacy_schema_
-                              ? "SELECT id, title, body, kind FROM notes ORDER BY updated_at DESC;"
-                              : "SELECT Id, Title, Body, Kind FROM notes ORDER BY UpdatedAtUtc DESC;";
+                              ? "SELECT id, title, body, url, kind FROM notes ORDER BY updated_at DESC;"
+                              : "SELECT Id, Title, Body, Url, Kind FROM notes ORDER BY UpdatedAtUtc DESC;";
         if (sqlite3_prepare_v2(database_, sql, -1, &statement, nullptr) != SQLITE_OK) {
             SetLastError();
             return notes;
@@ -155,7 +165,10 @@ public:
                 WideFromSqlite16(sqlite3_column_text16(statement, 0), sqlite3_column_bytes16(statement, 0)),
                 WideFromSqlite16(sqlite3_column_text16(statement, 1), sqlite3_column_bytes16(statement, 1)),
                 WideFromSqlite16(sqlite3_column_text16(statement, 2), sqlite3_column_bytes16(statement, 2)),
-                sqlite3_column_int(statement, 3) == 1 ? Note::Kind::Secret : Note::Kind::Text,
+                WideFromSqlite16(sqlite3_column_text16(statement, 3), sqlite3_column_bytes16(statement, 3)),
+                sqlite3_column_int(statement, 4) == 1
+                    ? Note::Kind::Secret
+                    : sqlite3_column_int(statement, 4) == 2 ? Note::Kind::Link : Note::Kind::Text,
                 true,
             };
             if (note.kind == Note::Kind::Secret) {
@@ -177,14 +190,14 @@ public:
         }
 
         const char* sql = legacy_schema_
-                              ? "INSERT INTO notes (id, title, body, kind, created_at, updated_at) "
-                                "VALUES (?, ?, ?, ?, strftime('%s','now'), strftime('%s','now')) "
+                              ? "INSERT INTO notes (id, title, body, url, kind, created_at, updated_at) "
+                                "VALUES (?, ?, ?, ?, ?, strftime('%s','now'), strftime('%s','now')) "
                                 "ON CONFLICT(id) DO UPDATE SET title = excluded.title, body = excluded.body, "
-                                "kind = excluded.kind, updated_at = strftime('%s','now');"
-                              : "INSERT INTO notes (Id, Title, Body, Kind, CreatedAtUtc, UpdatedAtUtc, SourceApplication) "
-                                "VALUES (?, ?, ?, ?, ?, ?, NULL) "
+                                "url = excluded.url, kind = excluded.kind, updated_at = strftime('%s','now');"
+                              : "INSERT INTO notes (Id, Title, Body, Url, Kind, CreatedAtUtc, UpdatedAtUtc, SourceApplication) "
+                                "VALUES (?, ?, ?, ?, ?, ?, ?, NULL) "
                                 "ON CONFLICT(Id) DO UPDATE SET Title = excluded.Title, Body = excluded.Body, "
-                                "UpdatedAtUtc = excluded.UpdatedAtUtc;";
+                                "Url = excluded.Url, Kind = excluded.Kind, UpdatedAtUtc = excluded.UpdatedAtUtc;";
         sqlite3_stmt* statement = nullptr;
         if (sqlite3_prepare_v2(database_, sql, -1, &statement, nullptr) != SQLITE_OK) {
             SetLastError();
@@ -200,13 +213,16 @@ public:
             return false;
         }
         sqlite3_bind_text16(statement, 3, stored_body.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_text16(statement, 4, note.url.c_str(), -1, SQLITE_TRANSIENT);
         const std::wstring now = NowUtcIso();
         if (legacy_schema_) {
-            sqlite3_bind_int(statement, 4, note.kind == Note::Kind::Secret ? 1 : 0);
+            sqlite3_bind_int(statement, 5,
+                            note.kind == Note::Kind::Secret ? 1 : note.kind == Note::Kind::Link ? 2 : 0);
         } else {
-            sqlite3_bind_int(statement, 4, note.kind == Note::Kind::Secret ? 1 : 0);
-            sqlite3_bind_text16(statement, 5, now.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_int(statement, 5,
+                            note.kind == Note::Kind::Secret ? 1 : note.kind == Note::Kind::Link ? 2 : 0);
             sqlite3_bind_text16(statement, 6, now.c_str(), -1, SQLITE_TRANSIENT);
+            sqlite3_bind_text16(statement, 7, now.c_str(), -1, SQLITE_TRANSIENT);
         }
         const bool success = sqlite3_step(statement) == SQLITE_DONE;
         if (!success) {

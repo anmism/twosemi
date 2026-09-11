@@ -45,8 +45,12 @@ void LauncherWindow::LayoutEditorControls() {
         const int editor_top = 30 + padding;
         const int type_x = save_x - gap - combo_width;
         const int body_bottom = button_y - padding;
-        SetWindowPos(inline_note_.body_edit, nullptr, padding, editor_top,
-                     width - padding * 2, std::max(60, body_bottom - editor_top),
+        const bool is_link = inline_note_.kind == Note::Kind::Link;
+        const int body_top = is_link ? editor_top + button_height + padding : editor_top;
+        SetWindowPos(inline_note_.url_edit, nullptr, padding, editor_top,
+                     width - padding * 2, button_height, SWP_NOZORDER | SWP_NOACTIVATE);
+        SetWindowPos(inline_note_.body_edit, nullptr, padding, body_top,
+                     width - padding * 2, std::max(60, body_bottom - body_top),
                      SWP_NOZORDER | SWP_NOACTIVATE);
         SetWindowPos(inline_note_.title_edit, nullptr, padding, button_y,
                      type_x - gap - padding, button_height, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -94,7 +98,11 @@ void LauncherWindow::UpdateInlineNoteKind() {
     if (editor_kind_ != LauncherEditorKind::Note || inline_note_.body_edit == nullptr) {
         return;
     }
-    const bool secret = SendMessageW(inline_note_.kind_combo, CB_GETCURSEL, 0, 0) == 1;
+    const LRESULT selected = SendMessageW(inline_note_.kind_combo, CB_GETCURSEL, 0, 0);
+    const bool link = selected == 1;
+    const bool secret = selected == 2;
+    inline_note_.kind = link ? Note::Kind::Link : secret ? Note::Kind::Secret : Note::Kind::Text;
+    ShowWindow(inline_note_.url_edit, link ? SW_SHOW : SW_HIDE);
     LONG_PTR style = GetWindowLongPtrW(inline_note_.body_edit, GWL_STYLE);
     if (secret) {
         style &= ~(ES_MULTILINE | ES_AUTOVSCROLL | ES_WANTRETURN | WS_VSCROLL);
@@ -118,18 +126,27 @@ void LauncherWindow::CreateEditorControls() {
         SendMessageW(inline_note_.title_edit, EM_SETCUEBANNER, TRUE,
                      reinterpret_cast<LPARAM>(L"optional title"));
         inline_note_.body_edit = CreateMultilineInput(window_, 602, inline_note_.body);
+        inline_note_.url_edit = CreateTextInput(window_, 604, inline_note_.url);
+        SendMessageW(inline_note_.url_edit, EM_SETCUEBANNER, TRUE,
+                     reinterpret_cast<LPARAM>(L"https://example.com"));
         inline_note_.kind_combo = CreateChoiceInput(window_, 603);
         SendMessageW(inline_note_.kind_combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Text"));
+        SendMessageW(inline_note_.kind_combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Link"));
         SendMessageW(inline_note_.kind_combo, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Secret"));
         SendMessageW(inline_note_.kind_combo, CB_SETCURSEL,
-                     static_cast<WPARAM>(inline_note_.kind == Note::Kind::Secret ? 1 : 0), 0);
+                     static_cast<WPARAM>(inline_note_.kind == Note::Kind::Link
+                                             ? 1
+                                             : inline_note_.kind == Note::Kind::Secret ? 2 : 0),
+                     0);
         inline_note_.save_button = CreateActionButton(window_, IDOK, L"Save");
         editor_cancel_button_ = CreateActionButton(window_, IDCANCEL, L"Cancel");
 
         EnableSelectAll(inline_note_.title_edit);
         EnableSelectAll(inline_note_.body_edit);
+        EnableSelectAll(inline_note_.url_edit);
         EnableEditorField(inline_note_.body_edit);
         EnableEditorField(inline_note_.title_edit);
+        EnableEditorField(inline_note_.url_edit);
         EnableEditorField(inline_note_.kind_combo);
         EnableEditorField(inline_note_.save_button);
         EnableEditorField(editor_cancel_button_);
@@ -139,8 +156,11 @@ void LauncherWindow::CreateEditorControls() {
         LayoutEditorControls();
         UpdateInlineNoteKind();
         UpdateEditorHint();
-        ActivateAndFocus(window_, inline_note_.body_edit);
-        SendMessageW(inline_note_.body_edit, EM_SETSEL, static_cast<WPARAM>(-1), static_cast<LPARAM>(-1));
+        const HWND initial_focus = inline_note_.kind == Note::Kind::Link
+                                       ? inline_note_.url_edit
+                                       : inline_note_.body_edit;
+        ActivateAndFocus(window_, initial_focus);
+        SendMessageW(initial_focus, EM_SETSEL, static_cast<WPARAM>(-1), static_cast<LPARAM>(-1));
         return;
     }
 
@@ -208,7 +228,18 @@ void LauncherWindow::FocusNextEditorField(bool backwards) {
     } else {
         index = (index + 1) % editor_focus_order_.size();
     }
-    SetFocus(editor_focus_order_[index]);
+    for (size_t attempt = 0; attempt < editor_focus_order_.size(); ++attempt) {
+        HWND target = editor_focus_order_[index];
+        if (target != nullptr && IsWindowVisible(target) && IsWindowEnabled(target)) {
+            SetFocus(target);
+            return;
+        }
+        if (backwards) {
+            index = index == 0 ? editor_focus_order_.size() - 1 : index - 1;
+        } else {
+            index = (index + 1) % editor_focus_order_.size();
+        }
+    }
 }
 
 void LauncherWindow::BeginNewNoteEditor() {
@@ -217,6 +248,18 @@ void LauncherWindow::BeginNewNoteEditor() {
     inline_note_ = NoteDraft{};
     inline_note_.body = captured_text_;
     view_title_ = L"twosemi :: note";
+    CreateEditorControls();
+}
+
+void LauncherWindow::BeginNewLinkEditor() {
+    editor_return_title_ = view_title_;
+    editor_kind_ = LauncherEditorKind::Note;
+    inline_note_ = NoteDraft{};
+    inline_note_.kind = Note::Kind::Link;
+    if (IsHttpUrl(captured_text_)) {
+        inline_note_.url = Trim(captured_text_);
+    }
+    view_title_ = L"twosemi :: link";
     CreateEditorControls();
 }
 
@@ -232,6 +275,7 @@ void LauncherWindow::BeginEditNoteEditor(const Note& note) {
     inline_note_existing_ = note;
     inline_note_.title = note.title;
     inline_note_.body = note.body;
+    inline_note_.url = note.url;
     inline_note_.kind = note.kind;
     view_title_ = L"twosemi :: note";
     CreateEditorControls();
@@ -332,8 +376,14 @@ void LauncherWindow::CancelEditor() {
 
 void LauncherWindow::CloseEditor() {
     if (editor_kind_ == LauncherEditorKind::Note) {
-        if (inline_note_.body_edit != nullptr &&
-            Trim(WindowText(inline_note_.body_edit)).empty()) {
+        const bool link = inline_note_.kind == Note::Kind::Link ||
+                          (inline_note_.kind_combo != nullptr &&
+                           SendMessageW(inline_note_.kind_combo, CB_GETCURSEL, 0, 0) == 1);
+        const bool body_empty = inline_note_.body_edit != nullptr &&
+                                Trim(WindowText(inline_note_.body_edit)).empty();
+        const bool url_empty = !link || inline_note_.url_edit == nullptr ||
+                               Trim(WindowText(inline_note_.url_edit)).empty();
+        if (body_empty && url_empty) {
             CancelEditor();
         } else {
             CommitEditor();
@@ -351,10 +401,18 @@ void LauncherWindow::CommitEditor() {
     if (editor_kind_ == LauncherEditorKind::Note) {
         inline_note_.title = Trim(WindowText(inline_note_.title_edit));
         inline_note_.body = WindowText(inline_note_.body_edit);
-        inline_note_.kind = SendMessageW(inline_note_.kind_combo, CB_GETCURSEL, 0, 0) == 1
-                                ? Note::Kind::Secret
-                                : Note::Kind::Text;
-        if (Trim(inline_note_.body).empty()) {
+        inline_note_.url = Trim(WindowText(inline_note_.url_edit));
+        const LRESULT selected = SendMessageW(inline_note_.kind_combo, CB_GETCURSEL, 0, 0);
+        inline_note_.kind = selected == 1
+                                ? Note::Kind::Link
+                                : selected == 2 ? Note::Kind::Secret : Note::Kind::Text;
+        if (inline_note_.kind == Note::Kind::Link && !IsHttpUrl(inline_note_.url)) {
+            MessageBoxW(window_, L"Enter a valid http:// or https:// URL.", L"TwoSemi",
+                        MB_OK | MB_ICONINFORMATION);
+            SetFocus(inline_note_.url_edit);
+            return;
+        }
+        if (inline_note_.kind != Note::Kind::Link && Trim(inline_note_.body).empty()) {
             MessageBoxW(window_, L"Write something in the note first.", L"TwoSemi",
                         MB_OK | MB_ICONINFORMATION);
             SetFocus(inline_note_.body_edit);
@@ -366,9 +424,13 @@ void LauncherWindow::CommitEditor() {
         }
         note.kind = inline_note_.kind;
         note.title = inline_note_.title.empty()
-                         ? (note.kind == Note::Kind::Secret ? L"Secret note" : MakeNoteTitle(inline_note_.body))
+                         ? (note.kind == Note::Kind::Secret
+                                ? L"Secret note"
+                                : note.kind == Note::Kind::Link ? LinkHost(inline_note_.url)
+                                                                : MakeNoteTitle(inline_note_.body))
                          : inline_note_.title;
         note.body = inline_note_.body;
+        note.url = note.kind == Note::Kind::Link ? inline_note_.url : L"";
         if (!app_->database_.SaveNote(note)) {
             app_->ShowDatabaseError();
         }

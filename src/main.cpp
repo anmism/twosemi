@@ -318,6 +318,43 @@ std::wstring MakeNoteTitle(const std::wstring& body) {
     return title;
 }
 
+bool IsHttpUrl(const std::wstring& value) {
+    const std::wstring trimmed = Trim(value);
+    const std::wstring lower = Lowercase(trimmed);
+    const bool has_scheme = lower.rfind(L"https://", 0) == 0 || lower.rfind(L"http://", 0) == 0;
+    if (!has_scheme || trimmed.size() <= lower.find(L"://") + 3) {
+        return false;
+    }
+    return std::none_of(trimmed.begin(), trimmed.end(), [](wchar_t character) {
+        return std::iswspace(character) != 0 || character == L'"' || character == L'<' || character == L'>';
+    });
+}
+
+std::wstring LinkHost(const std::wstring& value) {
+    std::wstring host = Trim(value);
+    const size_t scheme = host.find(L"://");
+    if (scheme != std::wstring::npos) {
+        host.erase(0, scheme + 3);
+    }
+    const size_t end = host.find_first_of(L"/\\?#");
+    if (end != std::wstring::npos) {
+        host.resize(end);
+    }
+    const size_t credentials = host.rfind(L'@');
+    if (credentials != std::wstring::npos) {
+        host.erase(0, credentials + 1);
+    }
+    return host.empty() ? L"Saved link" : host;
+}
+
+bool OpenHttpLink(const std::wstring& value) {
+    if (!IsHttpUrl(value)) {
+        return false;
+    }
+    return reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", value.c_str(), nullptr, nullptr,
+                                                    SW_SHOWNORMAL)) > 32;
+}
+
 std::wstring MakeChatTitle(const std::wstring& body) {
     std::wstring title = body;
     std::replace(title.begin(), title.end(), L'\r', L' ');

@@ -9,11 +9,13 @@ struct Note {
     enum class Kind {
         Text = 0,
         Secret = 1,
+        Link = 2,
     };
 
     std::wstring id;
     std::wstring title;
     std::wstring body;
+    std::wstring url;
     Kind kind = Kind::Text;
     bool secret_available = true;
 };

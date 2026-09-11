@@ -101,9 +101,13 @@ public:
         note.id = NewId();
         note.kind = draft.kind;
         note.title = draft.title.empty()
-                         ? (note.kind == Note::Kind::Secret ? L"Secret note" : MakeNoteTitle(draft.body))
+                         ? (note.kind == Note::Kind::Secret
+                                ? L"Secret note"
+                                : note.kind == Note::Kind::Link ? LinkHost(draft.url)
+                                                                : MakeNoteTitle(draft.body))
                          : draft.title;
         note.body = draft.body;
+        note.url = note.kind == Note::Kind::Link ? draft.url : L"";
         if (!database_.SaveNote(note)) {
             MessageBoxW(launcher_->Window(), database_.LastError().c_str(), L"TwoSemi", MB_OK | MB_ICONERROR);
         }
@@ -121,6 +125,7 @@ public:
         NoteDraft draft;
         draft.title = existing.title;
         draft.body = existing.body;
+        draft.url = existing.url;
         draft.kind = existing.kind;
         if (!EditNote(launcher_->Window(), draft)) {
             launcher_->Refresh();
@@ -130,9 +135,13 @@ public:
         Note note = existing;
         note.kind = draft.kind;
         note.title = draft.title.empty()
-                         ? (note.kind == Note::Kind::Secret ? L"Secret note" : MakeNoteTitle(draft.body))
+                         ? (note.kind == Note::Kind::Secret
+                                ? L"Secret note"
+                                : note.kind == Note::Kind::Link ? LinkHost(draft.url)
+                                                                : MakeNoteTitle(draft.body))
                          : draft.title;
         note.body = draft.body;
+        note.url = note.kind == Note::Kind::Link ? draft.url : L"";
         if (!database_.SaveNote(note)) {
             ShowDatabaseError();
         }
@@ -426,6 +435,16 @@ public:
             MessageBoxW(launcher_->Window(),
                         L"This secret note could not be unlocked for the current Windows user.",
                         L"TwoSemi", MB_OK | MB_ICONWARNING);
+            return;
+        }
+        if (note.kind == Note::Kind::Link) {
+            if (!OpenHttpLink(note.url)) {
+                MessageBoxW(launcher_->Window(), L"This note does not contain a valid web link.",
+                            L"TwoSemi", MB_OK | MB_ICONWARNING);
+                return;
+            }
+            HideLauncher();
+            target_window_ = nullptr;
             return;
         }
         const HWND target = target_window_;

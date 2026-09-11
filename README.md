@@ -10,7 +10,7 @@ This is the first native Windows milestone described in `project.md`:
 - keyboard-first mixed launcher with search and arrow-key navigation
 - SQLite-backed notes stored at `%LOCALAPPDATA%\TwoSemi\twosemi.db`
 - note creation with automatic titles
-- text and DPAPI-protected secret notes
+- text, web link, and DPAPI-protected secret notes
 - reminders with completion, editing, deletion, and one-hour snooze
 - todo groups with task creation, editing, deletion, and completion
 - daily and weekday streaks with current/best run tracking
@@ -55,7 +55,7 @@ The installer does not remove `%LOCALAPPDATA%\TwoSemi`, so notes, chats, setting
 
 GitHub Actions builds the Windows packages on pushes, pull requests, and `v*` tags. A tag such as `v0.1.0` publishes the installer and ZIP as a GitHub Release. The Pages workflow publishes the plain HTML site from `docs/`; enable **Settings > Pages > Source: GitHub Actions** once in the repository.
 
-The launcher shows creation actions first, followed by view actions and a mixed list of notes, reminders, todo groups, streaks, and chats. `View notes` and `View reminders` open focused lists for those item types. Select a todo group with `Enter` to open its tasks; use `Alt` + `Left` to return to the launcher.
+The launcher shows creation actions first, followed by view actions and a mixed list of notes, links, reminders, todo groups, streaks, and chats. `View notes`, `View links`, and `View reminders` open focused lists for those item types. Links keep their URL separately from an optional description; `Enter` opens a link in the browser. Select a todo group with `Enter` to open its tasks; use `Alt` + `Left` to return to the launcher.
 
 Keyboard actions:
 
