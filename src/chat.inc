@@ -1075,7 +1075,7 @@ LRESULT CALLBACK ChatDialogProc(HWND window, UINT message, WPARAM w_param, LPARA
         DeleteObject(fill);
         SetBkMode(draw->hDC, TRANSPARENT);
         SetTextColor(draw->hDC, enabled
-                                  ? is_clear ? RGB(230, 90, 90) : (is_send ? kAccent : kText)
+                                  ? is_clear ? RGB(230, 90, 90) : (is_send ? kSelectionText : kText)
                                   : kMutedText);
         FrameRect(draw->hDC, &draw->rcItem, GetSysColorBrush(COLOR_3DSHADOW));
         DrawTextW(draw->hDC, label, -1, &draw->rcItem,

@@ -3,6 +3,7 @@
 #include "ui_theme.h"
 #include "ui_controls.h"
 #include "app_types.h"
+#include <commctrl.h>
 #include <commdlg.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -782,6 +783,25 @@ std::wstring FormatLocalSystemTime(const SYSTEMTIME& time) {
     return buffer;
 }
 
+bool ParseLocalReminderDisplay(const std::wstring& value, SYSTEMTIME& local) {
+    unsigned short year = 0;
+    unsigned short month = 0;
+    unsigned short day = 0;
+    unsigned short hour = 0;
+    unsigned short minute = 0;
+    if (swscanf_s(value.c_str(), L"%hu-%hu-%hu %hu:%hu",
+                  &year, &month, &day, &hour, &minute) != 5) {
+        return false;
+    }
+    local = {};
+    local.wYear = year;
+    local.wMonth = month;
+    local.wDay = day;
+    local.wHour = hour;
+    local.wMinute = minute;
+    return true;
+}
+
 std::wstring DefaultReminderTime() {
     FILETIME file_time{};
     GetSystemTimeAsFileTime(&file_time);
@@ -934,6 +954,10 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR command_line, int) {
     }
 
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    INITCOMMONCONTROLSEX common_controls{};
+    common_controls.dwSize = sizeof(common_controls);
+    common_controls.dwICC = ICC_DATE_CLASSES;
+    InitCommonControlsEx(&common_controls);
     InitializeAppIcons();
     int result = 1;
     {

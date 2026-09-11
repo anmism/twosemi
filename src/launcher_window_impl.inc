@@ -810,7 +810,7 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
     case WM_MEASUREITEM: {
         auto* measure = reinterpret_cast<MEASUREITEMSTRUCT*>(l_param);
         if (measure != nullptr && measure->CtlID == 202) {
-            measure->itemHeight = 46;
+            measure->itemHeight = 48;
             return TRUE;
         }
         break;
@@ -827,7 +827,7 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
             FrameRect(draw->hDC, &draw->rcItem, border);
             DeleteObject(border);
             SetBkMode(draw->hDC, TRANSPARENT);
-            SetTextColor(draw->hDC, save_button ? kAccent : kText);
+            SetTextColor(draw->hDC, save_button ? kSelectionText : kText);
             DrawTextW(draw->hDC, save_button ? L"Save" : L"Cancel", -1,
                       &draw->rcItem, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
             return TRUE;
@@ -865,22 +865,22 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                 if (kind == LauncherItemKind::Streak) marker = L'S';
                 if (kind == LauncherItemKind::ChatThread) marker = L'A';
                 HFONT prev_font = static_cast<HFONT>(SelectObject(draw->hDC, launcher->bold_font_));
-                SetTextColor(draw->hDC, selected ? RGB(232, 244, 234) : (is_action ? kAccent : kMutedText));
-                TextOutW(draw->hDC, draw->rcItem.left + 4, draw->rcItem.top + 4, &marker, 1);
+                SetTextColor(draw->hDC, selected ? kSelectionText : (is_action ? kAccent : kMutedText));
+                TextOutW(draw->hDC, draw->rcItem.left + 4, draw->rcItem.top + 2, &marker, 1);
                 RECT title_rect = draw->rcItem;
                 title_rect.left += 22;
-                title_rect.top += 4;
+                title_rect.top += 2;
                 title_rect.right -= 4;
-                SetTextColor(draw->hDC, selected ? RGB(232, 244, 234) : kText);
+                SetTextColor(draw->hDC, selected ? kSelectionText : kText);
                 DrawTextW(draw->hDC, launcher->items_[index].title.c_str(), -1, &title_rect,
                           DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
                 if (!launcher->items_[index].detail.empty()) {
                     SelectObject(draw->hDC, launcher->small_font_);
                     RECT detail_rect = draw->rcItem;
                     detail_rect.left += 22;
-                    detail_rect.top += 28;
+                    detail_rect.top += 26;
                     detail_rect.right -= 4;
-                    SetTextColor(draw->hDC, selected ? RGB(218, 229, 246) : kMutedText);
+                    SetTextColor(draw->hDC, selected ? kSelectionMutedText : kMutedText);
                     DrawTextW(draw->hDC, launcher->items_[index].detail.c_str(), -1, &detail_rect,
                               DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
                 }

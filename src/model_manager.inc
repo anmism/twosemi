@@ -196,7 +196,7 @@ LRESULT CALLBACK ModelEditorProc(HWND window, UINT message, WPARAM w_param, LPAR
         FrameRect(draw->hDC, &draw->rcItem, border);
         DeleteObject(border);
         SetBkMode(draw->hDC, TRANSPARENT);
-        SetTextColor(draw->hDC, save_button ? kAccent : kText);
+        SetTextColor(draw->hDC, save_button ? kSelectionText : kText);
         DrawTextW(draw->hDC, save_button ? L"Save" : L"Cancel", -1,
                   &draw->rcItem, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         return TRUE;
@@ -524,7 +524,7 @@ LRESULT CALLBACK ModelManagerProc(HWND window, UINT message, WPARAM w_param, LPA
                                  : draw->CtlID == 505 ? L"Set default"
                                  : draw->CtlID == 506 ? L"Delete" : L"Close";
         SetBkMode(draw->hDC, TRANSPARENT);
-        SetTextColor(draw->hDC, accent ? kAccent : kText);
+        SetTextColor(draw->hDC, accent ? kSelectionText : kText);
         DrawTextW(draw->hDC, label, -1, &draw->rcItem,
                   DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         return TRUE;
@@ -590,4 +590,3 @@ void RunModelManager(HWND owner, Database& database) {
     RestoreLauncherFocus(owner);
     DeleteObject(state.font);
 }
-

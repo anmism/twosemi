@@ -61,7 +61,10 @@ void LauncherWindow::LayoutEditorControls() {
 
     SetWindowPos(inline_quick_.first_edit, nullptr, 4, 42, width - 8, 28,
                  SWP_NOZORDER | SWP_NOACTIVATE);
-    if (inline_quick_.second_edit != nullptr) {
+    if (inline_quick_.second_picker != nullptr) {
+        SetWindowPos(inline_quick_.second_picker, nullptr, 4, 78, 220, 28,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+    } else if (inline_quick_.second_edit != nullptr) {
         SetWindowPos(inline_quick_.second_edit, nullptr, 4, 78, 220, 28,
                      SWP_NOZORDER | SWP_NOACTIVATE);
     }
@@ -150,9 +153,11 @@ void LauncherWindow::CreateEditorControls() {
     SendMessageW(inline_quick_.first_edit, EM_SETCUEBANNER, TRUE,
                  reinterpret_cast<LPARAM>(cue));
     if (editor_kind_ == LauncherEditorKind::Reminder) {
-        inline_quick_.second_edit = CreateTextInput(window_, 612, inline_quick_.second);
-        SendMessageW(inline_quick_.second_edit, EM_SETCUEBANNER, TRUE,
-                     reinterpret_cast<LPARAM>(L"yyyy-mm-dd hh:mm"));
+        SYSTEMTIME local_time{};
+        if (!ParseLocalReminderDisplay(inline_quick_.second, local_time)) {
+            GetLocalTime(&local_time);
+        }
+        inline_quick_.second_picker = CreateDateTimeInput(window_, 612, local_time);
     }
     if (editor_kind_ == LauncherEditorKind::Streak) {
         inline_quick_.frequency_combo = CreateChoiceInput(window_, 613);
@@ -171,6 +176,9 @@ void LauncherWindow::CreateEditorControls() {
     if (inline_quick_.second_edit != nullptr) {
         EnableSelectAll(inline_quick_.second_edit);
         EnableEditorField(inline_quick_.second_edit);
+    }
+    if (inline_quick_.second_picker != nullptr) {
+        EnableEditorField(inline_quick_.second_picker);
     }
     if (inline_quick_.frequency_combo != nullptr) {
         EnableEditorField(inline_quick_.frequency_combo);
@@ -376,7 +384,18 @@ void LauncherWindow::CommitEditor() {
     }
 
     if (editor_kind_ == LauncherEditorKind::Reminder) {
-        inline_quick_.second = Trim(WindowText(inline_quick_.second_edit));
+        if (inline_quick_.second_picker != nullptr) {
+            SYSTEMTIME local_time{};
+            if (!ReadDateTimeInput(inline_quick_.second_picker, local_time)) {
+                MessageBoxW(window_, L"Choose a valid reminder time.", L"TwoSemi",
+                            MB_OK | MB_ICONINFORMATION);
+                SetFocus(inline_quick_.second_picker);
+                return;
+            }
+            inline_quick_.second = FormatLocalSystemTime(local_time);
+        } else {
+            inline_quick_.second = Trim(WindowText(inline_quick_.second_edit));
+        }
         std::wstring utc_value;
         if (!ParseLocalReminderTime(inline_quick_.second, utc_value)) {
             MessageBoxW(window_, L"Use the format yyyy-mm-dd hh:mm.", L"TwoSemi",

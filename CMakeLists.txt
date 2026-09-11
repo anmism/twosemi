@@ -34,6 +34,7 @@ target_link_libraries(TwoSemi PRIVATE
     shlwapi
     gdiplus
     comdlg32
+    comctl32
     winhttp
     winsqlite3
 )

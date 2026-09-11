@@ -265,7 +265,7 @@ LRESULT CALLBACK NoteEditorProc(HWND window, UINT message, WPARAM w_param, LPARA
         FrameRect(draw->hDC, &draw->rcItem, border);
         DeleteObject(border);
         SetBkMode(draw->hDC, TRANSPARENT);
-        SetTextColor(draw->hDC, kAccent);
+        SetTextColor(draw->hDC, kSelectionText);
         DrawTextW(draw->hDC, L"Save", -1,
                   &draw->rcItem, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         return TRUE;
@@ -357,6 +357,7 @@ struct QuickDraft {
     bool done = false;
     HWND first_edit = nullptr;
     HWND second_edit = nullptr;
+    HWND second_picker = nullptr;
     HWND frequency_combo = nullptr;
     HWND save_button = nullptr;
     HFONT font = nullptr;
@@ -560,7 +561,7 @@ LRESULT CALLBACK QuickEditorProc(HWND window, UINT message, WPARAM w_param, LPAR
         FrameRect(draw->hDC, &draw->rcItem, border);
         DeleteObject(border);
         SetBkMode(draw->hDC, TRANSPARENT);
-        SetTextColor(draw->hDC, save_button ? kAccent : kText);
+        SetTextColor(draw->hDC, save_button ? kSelectionText : kText);
         DrawTextW(draw->hDC, save_button ? L"Save" : L"Cancel", -1, &draw->rcItem,
                   DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         return TRUE;
@@ -763,7 +764,7 @@ LRESULT CALLBACK FocusEditorProc(HWND window, UINT message, WPARAM w_param, LPAR
         FrameRect(draw->hDC, &draw->rcItem, border);
         DeleteObject(border);
         SetBkMode(draw->hDC, TRANSPARENT);
-        SetTextColor(draw->hDC, start_button ? kAccent : kText);
+        SetTextColor(draw->hDC, start_button ? kSelectionText : kText);
         DrawTextW(draw->hDC, start_button ? L"Start" : L"Cancel", -1, &draw->rcItem,
                   DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         return TRUE;
