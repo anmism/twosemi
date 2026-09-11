@@ -73,8 +73,8 @@ set(CPACK_NSIS_INSTALLED_ICON_NAME "TwoSemi.exe")
 set(CPACK_NSIS_MENU_LINKS
     "TwoSemi.exe" "TwoSemi"
 )
-set(CPACK_NSIS_CREATE_ICONS_EXTRA
-    "CreateShortCut '$DESKTOP/TwoSemi.lnk' '$INSTDIR/TwoSemi.exe'"
+set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS
+    "MessageBox MB_YESNO|MB_ICONQUESTION \\\"Create a desktop shortcut for TwoSemi?\\\" IDNO skip_desktop_shortcut\nCreateShortCut \\\"$DESKTOP/TwoSemi.lnk\\\" \\\"$INSTDIR/TwoSemi.exe\\\"\nskip_desktop_shortcut:"
 )
 set(CPACK_NSIS_DELETE_ICONS_EXTRA
     "Delete '$DESKTOP/TwoSemi.lnk'"

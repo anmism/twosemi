@@ -47,7 +47,9 @@ Create a normal Windows installer with Start Menu, Desktop shortcut, and an unin
 cpack --config build\CPackConfig.cmake -G NSIS -B dist
 ```
 
-This creates `dist\TwoSemi-0.1.0-win64.exe`. Share that installer with users; they can install, launch, and uninstall TwoSemi through the normal Windows flow.
+This creates `dist\TwoSemi-0.1.0-win64.exe`. During installation, the user is asked whether to create a desktop shortcut. A Start Menu shortcut is also installed.
+
+TwoSemi does not currently start automatically with Windows. The installed app and desktop shortcut remain available after a Windows restart, and notes, chats, settings, and encrypted model keys are stored under `%LOCALAPPDATA%\TwoSemi`.
 
 The installer does not remove `%LOCALAPPDATA%\TwoSemi`, so notes, chats, settings, and encrypted model keys remain available after uninstall or upgrade.
 
@@ -57,16 +59,14 @@ The launcher shows creation actions first, followed by view actions and a mixed 
 
 Keyboard actions:
 
-- `Enter` opens or executes the selected item
-- `Ctrl` + `Enter` edits the selected reminder, group, or task
-- `C` completes a reminder or task when the result list is focused
-- `Enter` or `C` checks a streak for today; checking again reverses today's check-in
+- `Enter` opens or executes the selected item; it fills a selected note and checks tasks or streaks
+- `Ctrl` + `Enter` edits a supported saved item
 - `Ctrl` + `Enter` sends a chat message
 - `Configure models` opens the AI model manager
-- `View notes` and `View reminders` open focused lists; `Alt` + `Left` returns
-- `Start focus` opens a timed session; `P` pauses/resumes and `X` stops it
-- `S` snoozes a reminder for one hour
-- `F2` edits and `Delete` removes the selected reminder, group, or task
+- `Delete` removes the selected saved item
+- `F2` edits the selected saved item
+- `Alt` + `Left` returns from a focused list to the launcher
+- `Escape` closes the launcher or current editor
 - `Tab` switches between search and results
 - `Escape` closes the launcher
 
