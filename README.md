@@ -72,6 +72,19 @@ Keyboard actions:
 
 The prototype uses the Windows SDK's `winsqlite3` library, so it does not bundle a separate SQLite DLL.
 
+## Source layout
+
+The native code is split into small reusable pieces:
+
+- `src/app_types.h` contains the shared data models.
+- `src/ui_theme.h/.cpp` contains colors, dimensions, and font setup.
+- `src/ui_controls.h/.cpp` contains reusable text fields, choice fields, and action buttons.
+- `src/database.inc` contains SQLite storage.
+- `src/modal_editors.inc`, `src/chat.inc`, and `src/model_manager.inc` contain their feature editors.
+- `src/launcher_window_*.inc` and `src/app_controller.inc` contain the launcher and application behavior.
+
+`main.cpp` keeps the shared Windows setup and assembles these internal implementation units.
+
 ## Focus Mode
 
 Focus settings are saved in SQLite. Enter one domain per line, for example `youtube.com` or `reddit.com`.

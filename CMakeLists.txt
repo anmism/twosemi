@@ -7,6 +7,8 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 add_executable(TwoSemi WIN32
     src/main.cpp
     src/TwoSemi.rc
+    src/ui_controls.cpp
+    src/ui_theme.cpp
 )
 
 target_compile_features(TwoSemi PRIVATE cxx_std_20)
@@ -25,6 +27,7 @@ endif()
 target_link_libraries(TwoSemi PRIVATE
     user32
     shell32
+    uxtheme
     advapi32
     crypt32
     ole32
