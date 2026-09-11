@@ -101,6 +101,7 @@ void LauncherWindow::OpenTodoGroup(const std::wstring& group_id) {
     todo_group_view_ = true;
     todo_groups_view_ = false;
     note_view_ = false;
+    secret_view_ = false;
     link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
@@ -115,6 +116,7 @@ void LauncherWindow::OpenTodoGroups() {
     todo_group_view_ = false;
     todo_groups_view_ = true;
     note_view_ = false;
+    secret_view_ = false;
     link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
@@ -129,6 +131,7 @@ void LauncherWindow::OpenNotes() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = true;
+    secret_view_ = false;
     link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
@@ -139,10 +142,26 @@ void LauncherWindow::OpenNotes() {
     ActivateAndFocus(window_, search_);
 }
 
+void LauncherWindow::OpenSecrets() {
+    todo_group_view_ = false;
+    todo_groups_view_ = false;
+    note_view_ = false;
+    secret_view_ = true;
+    link_view_ = false;
+    reminder_view_ = false;
+    streak_view_ = false;
+    chat_view_ = false;
+    view_title_ = L"twosemi :: secrets";
+    SetWindowTextW(search_, L"");
+    Refresh();
+    ActivateAndFocus(window_, search_);
+}
+
 void LauncherWindow::OpenLinks() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    secret_view_ = false;
     link_view_ = true;
     reminder_view_ = false;
     streak_view_ = false;
@@ -157,6 +176,7 @@ void LauncherWindow::OpenReminders() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    secret_view_ = false;
     link_view_ = false;
     reminder_view_ = true;
     streak_view_ = false;
@@ -171,6 +191,7 @@ void LauncherWindow::OpenStreaks() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    secret_view_ = false;
     link_view_ = false;
     reminder_view_ = false;
     streak_view_ = true;
@@ -185,6 +206,7 @@ void LauncherWindow::OpenChats() {
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    secret_view_ = false;
     link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
@@ -257,13 +279,20 @@ void LauncherWindow::Refresh() {
         all_items.push_back({LauncherItemKind::NewNote, L"New note", L"Create a note from the current selection or typed text", 0});
         for (size_t index = 0; index < notes_.size(); ++index) {
             const Note& note = notes_[index];
-            if (note.kind == Note::Kind::Link) {
+            if (note.kind != Note::Kind::Text) {
                 continue;
             }
-            const std::wstring detail = note.kind == Note::Kind::Secret
-                                            ? (note.secret_available ? L"Secret note" : L"Secret note unavailable")
-                                            : NotePreview(note.body);
-            all_items.push_back({LauncherItemKind::Note, note.title, detail, index});
+            all_items.push_back({LauncherItemKind::Note, note.title, NotePreview(note.body), index});
+        }
+    } else if (secret_view_) {
+        all_items.push_back({LauncherItemKind::NewSecret, L"New secret", L"Store a protected secret note", 0});
+        for (size_t index = 0; index < notes_.size(); ++index) {
+            const Note& note = notes_[index];
+            if (note.kind != Note::Kind::Secret) {
+                continue;
+            }
+            all_items.push_back({LauncherItemKind::Note, note.title,
+                                 note.secret_available ? L"Secret note" : L"Secret note unavailable", index});
         }
     } else if (link_view_) {
         all_items.push_back({LauncherItemKind::NewLink, L"New link", L"Save a web link with an optional description", 0});
@@ -305,12 +334,15 @@ void LauncherWindow::Refresh() {
         todo_group_view_ = false;
         todo_groups_view_ = false;
         note_view_ = false;
+        secret_view_ = false;
         link_view_ = false;
         reminder_view_ = false;
         streak_view_ = false;
         chat_view_ = false;
         all_items.push_back({LauncherItemKind::NewNote, L"New note", L"Create a note from the current selection or typed text", 0});
         all_items.push_back({LauncherItemKind::ViewNotes, L"View notes", L"Open saved notes", 0});
+        all_items.push_back({LauncherItemKind::NewSecret, L"New secret", L"Store a protected secret note", 0});
+        all_items.push_back({LauncherItemKind::ViewSecrets, L"View secrets", L"Open protected secret notes", 0});
         all_items.push_back({LauncherItemKind::NewLink, L"New link", L"Save a web link with an optional description", 0});
         all_items.push_back({LauncherItemKind::ViewLinks, L"View links", L"Open saved web links", 0});
         all_items.push_back({LauncherItemKind::NewReminder, L"New reminder", L"Schedule a reminder", 0});
@@ -411,6 +443,7 @@ void LauncherWindow::UpdateHint() {
     if (const LauncherItem* item = SelectedItem(); item != nullptr) {
         switch (item->kind) {
         case LauncherItemKind::NewNote:
+        case LauncherItemKind::NewSecret:
         case LauncherItemKind::NewLink:
         case LauncherItemKind::NewReminder:
         case LauncherItemKind::NewTodoGroup:
@@ -420,6 +453,7 @@ void LauncherWindow::UpdateHint() {
             hint = L"Enter create";
             break;
         case LauncherItemKind::ViewNotes:
+        case LauncherItemKind::ViewSecrets:
         case LauncherItemKind::ViewLinks:
         case LauncherItemKind::ViewReminders:
         case LauncherItemKind::ViewTodoGroups:
@@ -462,7 +496,7 @@ void LauncherWindow::UpdateHint() {
             break;
         }
     }
-    if (todo_group_view_ || todo_groups_view_ || note_view_ || link_view_ || reminder_view_ || streak_view_ || chat_view_) {
+    if (todo_group_view_ || todo_groups_view_ || note_view_ || secret_view_ || link_view_ || reminder_view_ || streak_view_ || chat_view_) {
         hint += L"  |  Alt+Left back";
     }
     SetWindowTextW(hint_, hint.c_str());
@@ -498,6 +532,9 @@ void LauncherWindow::ExecuteSelected() {
     case LauncherItemKind::NewNote:
         BeginNewNoteEditor();
         return;
+    case LauncherItemKind::NewSecret:
+        BeginNewSecretEditor();
+        return;
     case LauncherItemKind::NewLink:
         BeginNewLinkEditor();
         return;
@@ -530,6 +567,9 @@ void LauncherWindow::ExecuteSelected() {
     case LauncherItemKind::ViewNotes:
         OpenNotes();
         return;
+    case LauncherItemKind::ViewSecrets:
+        OpenSecrets();
+        return;
     case LauncherItemKind::ViewLinks:
         OpenLinks();
         return;
@@ -560,6 +600,7 @@ void LauncherWindow::ExecuteSelected() {
             todo_group_view_ = true;
             todo_groups_view_ = false;
             note_view_ = false;
+            secret_view_ = false;
             link_view_ = false;
             reminder_view_ = false;
             streak_view_ = false;
@@ -629,13 +670,14 @@ void LauncherWindow::GoBack() {
         CancelEditor();
         return;
     }
-    if (!todo_group_view_ && !todo_groups_view_ && !note_view_ && !link_view_ && !reminder_view_ &&
+    if (!todo_group_view_ && !todo_groups_view_ && !note_view_ && !secret_view_ && !link_view_ && !reminder_view_ &&
         !streak_view_ && !chat_view_) {
         return;
     }
     todo_group_view_ = false;
     todo_groups_view_ = false;
     note_view_ = false;
+    secret_view_ = false;
     link_view_ = false;
     reminder_view_ = false;
     streak_view_ = false;
@@ -890,6 +932,7 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                 SetBkMode(draw->hDC, TRANSPARENT);
                 const LauncherItemKind kind = launcher->items_[index].kind;
                 const bool is_action = kind == LauncherItemKind::NewNote ||
+                                       kind == LauncherItemKind::NewSecret ||
                                        kind == LauncherItemKind::NewLink ||
                                        kind == LauncherItemKind::NewReminder ||
                                        kind == LauncherItemKind::StartFocus ||
@@ -901,6 +944,7 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                                        kind == LauncherItemKind::NewStreak ||
                                        kind == LauncherItemKind::NewChat ||
                                        kind == LauncherItemKind::ViewNotes ||
+                                       kind == LauncherItemKind::ViewSecrets ||
                                        kind == LauncherItemKind::ViewLinks ||
                                        kind == LauncherItemKind::ViewReminders ||
                                        kind == LauncherItemKind::ViewStreaks ||
@@ -910,10 +954,11 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                 wchar_t marker = L'-';
                 if (is_action) marker = L'+';
                 if (kind == LauncherItemKind::Note) {
-                    marker = launcher->items_[index].index < launcher->notes_.size() &&
-                                     launcher->notes_[launcher->items_[index].index].kind == Note::Kind::Link
-                                 ? L'L'
-                                 : L'N';
+                    if (launcher->items_[index].index < launcher->notes_.size()) {
+                        const Note::Kind note_kind = launcher->notes_[launcher->items_[index].index].kind;
+                        marker = note_kind == Note::Kind::Link ? L'L'
+                                 : note_kind == Note::Kind::Secret ? L'S' : L'N';
+                    }
                 }
                 if (kind == LauncherItemKind::Reminder) marker = L'R';
                 if (kind == LauncherItemKind::TodoGroup || kind == LauncherItemKind::TodoTask) marker = L'T';

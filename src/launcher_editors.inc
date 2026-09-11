@@ -251,6 +251,15 @@ void LauncherWindow::BeginNewNoteEditor() {
     CreateEditorControls();
 }
 
+void LauncherWindow::BeginNewSecretEditor() {
+    editor_return_title_ = view_title_;
+    editor_kind_ = LauncherEditorKind::Note;
+    inline_note_ = NoteDraft{};
+    inline_note_.kind = Note::Kind::Secret;
+    view_title_ = L"twosemi :: secret";
+    CreateEditorControls();
+}
+
 void LauncherWindow::BeginNewLinkEditor() {
     editor_return_title_ = view_title_;
     editor_kind_ = LauncherEditorKind::Note;

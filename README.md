@@ -55,7 +55,7 @@ The installer does not remove `%LOCALAPPDATA%\TwoSemi`, so notes, chats, setting
 
 GitHub Actions builds the Windows packages on pushes, pull requests, and `v*` tags. A tag such as `v0.1.0` publishes the installer and ZIP as a GitHub Release. The Pages workflow publishes the plain HTML site from `docs/`; enable **Settings > Pages > Source: GitHub Actions** once in the repository.
 
-The launcher shows creation actions first, followed by view actions and a mixed list of notes, links, reminders, todo groups, streaks, and chats. `View notes`, `View links`, and `View reminders` open focused lists for those item types. Links keep their URL separately from an optional description; `Enter` opens a link in the browser. Select a todo group with `Enter` to open its tasks; use `Alt` + `Left` to return to the launcher.
+The launcher shows creation actions first, followed by view actions and a mixed list of notes, secrets, links, reminders, todo groups, streaks, and chats. `View notes`, `View secrets`, `View links`, and `View reminders` open focused lists for those item types. Links keep their URL separately from an optional description; `Enter` opens a link in the browser. Select a todo group with `Enter` to open its tasks; use `Alt` + `Left` to return to the launcher.
 
 Keyboard actions:
 

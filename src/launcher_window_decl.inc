@@ -2,6 +2,7 @@ class TwoSemiApp;
 
 enum class LauncherItemKind {
     NewNote,
+    NewSecret,
     NewLink,
     NewReminder,
     StartFocus,
@@ -13,6 +14,7 @@ enum class LauncherItemKind {
     NewStreak,
     NewChat,
     ViewNotes,
+    ViewSecrets,
     ViewLinks,
     ViewReminders,
     ViewStreaks,
@@ -60,6 +62,7 @@ public:
     void OpenTodoGroup(const std::wstring& group_id);
     void OpenTodoGroups();
     void OpenNotes();
+    void OpenSecrets();
     void OpenLinks();
     void OpenReminders();
     void OpenStreaks();
@@ -75,6 +78,7 @@ private:
     void UpdateHint();
     void UpdateEditorHint();
     void BeginNewNoteEditor();
+    void BeginNewSecretEditor();
     void BeginNewLinkEditor();
     void BeginEditNoteEditor(const Note& note);
     void BeginNewReminderEditor();
@@ -122,6 +126,7 @@ private:
     bool todo_group_view_ = false;
     bool todo_groups_view_ = false;
     bool note_view_ = false;
+    bool secret_view_ = false;
     bool link_view_ = false;
     bool reminder_view_ = false;
     bool streak_view_ = false;
