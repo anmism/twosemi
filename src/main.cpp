@@ -20,6 +20,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -51,6 +52,7 @@ constexpr UINT kChatUploadCommand = 305;
 constexpr UINT kChatClearAttachmentCommand = 306;
 constexpr UINT kChatAttachmentPreview = 307;
 constexpr UINT kFocusTimer = 2;
+constexpr UINT kReminderTimer = 3;
 constexpr wchar_t kSelectAllOriginalProperty[] = L"TwoSemi.SelectAll.Original";
 
 constexpr int kActivationIntervalMs = 650;
@@ -1965,7 +1967,6 @@ struct NoteDraft {
     HWND body_label = nullptr;
     HWND kind_combo = nullptr;
     HWND save_button = nullptr;
-    HWND cancel_button = nullptr;
     HFONT font = nullptr;
 };
 
@@ -1988,6 +1989,14 @@ LRESULT CALLBACK NoteTabProc(HWND window, UINT message, WPARAM w_param, LPARAM l
         HWND parent = GetParent(window);
         if (parent != nullptr) {
             SendMessageW(parent, WM_CLOSE, 0, 0);
+            return 0;
+        }
+    }
+    if (message == WM_KEYDOWN && w_param == VK_RETURN &&
+        (GetKeyState(VK_CONTROL) & 0x8000) != 0) {
+        HWND parent = GetParent(window);
+        if (parent != nullptr) {
+            SendMessageW(parent, WM_COMMAND, MAKEWPARAM(IDOK, BN_CLICKED), 0);
             return 0;
         }
     }
@@ -2032,19 +2041,16 @@ void LayoutNoteEditor(NoteDraft& draft) {
                  SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 
     const int save_width = 60;
-    const int cancel_width = 60;
     const int combo_width = 80;
     const int gap = 4;
-    const int right_block = save_width + gap + cancel_width;
-    const int title_width = std::max(100, width - right_block - combo_width - gap * 3);
+    const int right_block = save_width;
+    const int title_width = std::max(100, width - right_block - combo_width - gap * 2);
 
     SetWindowPos(draft.title_edit, nullptr, 0, bar_y, title_width, bar_height,
                  SWP_NOZORDER | SWP_NOACTIVATE);
     SetWindowPos(draft.kind_combo, nullptr, title_width + gap, bar_y, combo_width, 150,
                  SWP_NOZORDER | SWP_NOACTIVATE);
     SetWindowPos(draft.save_button, nullptr, width - right_block, bar_y, save_width, bar_height,
-                 SWP_NOZORDER | SWP_NOACTIVATE);
-    SetWindowPos(draft.cancel_button, nullptr, width - cancel_width, bar_y, cancel_width, bar_height,
                  SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
@@ -2061,6 +2067,24 @@ void UpdateSecretEditor(NoteDraft& draft) {
     SetWindowLongPtrW(draft.body_edit, GWL_STYLE, style);
     LayoutNoteEditor(draft);
     InvalidateRect(draft.body_edit, nullptr, TRUE);
+}
+
+bool SaveNoteDraft(NoteDraft& draft, HWND window) {
+    draft.title = Trim(WindowText(draft.title_edit));
+    draft.body = WindowText(draft.body_edit);
+    draft.kind = SendMessageW(draft.kind_combo, CB_GETCURSEL, 0, 0) == 1
+                     ? Note::Kind::Secret
+                     : Note::Kind::Text;
+    if (Trim(draft.body).empty()) {
+        MessageBoxW(window, L"Write something in the note first.", L"TwoSemi",
+                    MB_OK | MB_ICONINFORMATION);
+        SetFocus(draft.body_edit);
+        return false;
+    }
+    draft.accepted = true;
+    draft.done = true;
+    DestroyWindow(window);
+    return true;
 }
 
 LRESULT CALLBACK NoteEditorProc(HWND window, UINT message, WPARAM w_param, LPARAM l_param) {
@@ -2105,20 +2129,16 @@ LRESULT CALLBACK NoteEditorProc(HWND window, UINT message, WPARAM w_param, LPARA
         draft->save_button = CreateWindowW(L"BUTTON", L"Save", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
                                   0, 0, 60, 28, window, reinterpret_cast<HMENU>(IDOK),
                                   GetModuleHandleW(nullptr), nullptr);
-        draft->cancel_button = CreateWindowW(L"BUTTON", L"Cancel", WS_CHILD | WS_VISIBLE | BS_OWNERDRAW | WS_TABSTOP,
-                                    0, 0, 60, 28, window, reinterpret_cast<HMENU>(IDCANCEL),
-                                    GetModuleHandleW(nullptr), nullptr);
 
         EnableSelectAll(draft->title_edit);
         EnableSelectAll(draft->body_edit);
-        EnableNoteTab(draft->body_edit, *draft, draft->title_edit, draft->cancel_button);
+        EnableNoteTab(draft->body_edit, *draft, draft->title_edit, draft->save_button);
         EnableNoteTab(draft->title_edit, *draft, draft->kind_combo, draft->body_edit);
         EnableNoteTab(draft->kind_combo, *draft, draft->save_button, draft->title_edit);
-        EnableNoteTab(draft->save_button, *draft, draft->cancel_button, draft->kind_combo);
-        EnableNoteTab(draft->cancel_button, *draft, draft->body_edit, draft->save_button);
+        EnableNoteTab(draft->save_button, *draft, draft->body_edit, draft->kind_combo);
 
         for (HWND child : {draft->kind_combo, draft->title_edit, draft->body_edit,
-                           draft->save_button, draft->cancel_button}) {
+                           draft->save_button}) {
             SetFont(child, font);
         }
         SendMessageW(draft->title_edit, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN, MAKELPARAM(4, 4));
@@ -2136,30 +2156,12 @@ LRESULT CALLBACK NoteEditorProc(HWND window, UINT message, WPARAM w_param, LPARA
             return 0;
         }
         if (LOWORD(w_param) == IDOK) {
-            draft->title = Trim(WindowText(draft->title_edit));
-            draft->body = WindowText(draft->body_edit);
-            draft->kind = SendMessageW(draft->kind_combo, CB_GETCURSEL, 0, 0) == 1
-                              ? Note::Kind::Secret
-                              : Note::Kind::Text;
-            if (Trim(draft->body).empty()) {
-                MessageBoxW(window, L"Write something in the note first.", L"TwoSemi", MB_OK | MB_ICONINFORMATION);
-                SetFocus(draft->body_edit);
-                return 0;
-            }
-            draft->accepted = true;
-            draft->done = true;
-            DestroyWindow(window);
-            return 0;
-        }
-        if (LOWORD(w_param) == IDCANCEL) {
-            draft->done = true;
-            DestroyWindow(window);
+            SaveNoteDraft(*draft, window);
             return 0;
         }
         break;
     case WM_CLOSE:
-        draft->done = true;
-        DestroyWindow(window);
+        SaveNoteDraft(*draft, window);
         return 0;
     case WM_NCHITTEST: {
         const LRESULT hit = DefWindowProcW(window, message, w_param, l_param);
@@ -2189,7 +2191,7 @@ LRESULT CALLBACK NoteEditorProc(HWND window, UINT message, WPARAM w_param, LPARA
         SetBkMode(dc, TRANSPARENT);
         SetTextColor(dc, kMutedText);
         HFONT previous_font = static_cast<HFONT>(SelectObject(dc, draft->font));
-        const std::wstring title = L"twosemi :: note  |  Esc close";
+        const std::wstring title = L"twosemi :: note  |  Esc save";
         TextOutW(dc, 4, 5, title.c_str(), static_cast<int>(title.size()));
         SelectObject(dc, previous_font);
         EndPaint(window, &paint);
@@ -2219,8 +2221,8 @@ LRESULT CALLBACK NoteEditorProc(HWND window, UINT message, WPARAM w_param, LPARA
         FrameRect(draw->hDC, &draw->rcItem, border);
         DeleteObject(border);
         SetBkMode(draw->hDC, TRANSPARENT);
-        SetTextColor(draw->hDC, save_button ? kAccent : kText);
-        DrawTextW(draw->hDC, save_button ? L"Save" : L"Cancel", -1,
+        SetTextColor(draw->hDC, kAccent);
+        DrawTextW(draw->hDC, L"Save", -1,
                   &draw->rcItem, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         return TRUE;
     }
@@ -4256,7 +4258,7 @@ void RefreshModelManager(ModelManagerState& state) {
     if (!state.profiles.empty()) {
         SendMessageW(state.list, LB_SETCURSEL, 0, 0);
     }
-    SetWindowTextW(state.status, L"Enter/F2 edit  |  N add  |  D set default  |  Delete remove");
+    SetWindowTextW(state.status, L"Enter edit  |  N add  |  D set default  |  Delete remove");
 }
 
 int SelectedModelIndex(ModelManagerState& state) {
@@ -4613,6 +4615,7 @@ private:
 
     void CreateControls();
     void MoveSelection(int delta);
+    void UpdateHint();
     void ExecuteSelected();
     void HandleKey(WPARAM key);
     void GoBack();
@@ -4629,6 +4632,7 @@ private:
     HFONT regular_font_ = nullptr;
     HFONT bold_font_ = nullptr;
     HFONT small_font_ = nullptr;
+    HFONT footer_font_ = nullptr;
     std::wstring captured_text_;
     std::vector<Note> notes_;
     std::vector<Reminder> reminders_;
@@ -4655,6 +4659,9 @@ public:
         if (focus_active_) {
             StopFocus();
         }
+        if (host_ != nullptr) {
+            KillTimer(host_, kReminderTimer);
+        }
         RemoveTrayIcon();
         if (keyboard_hook_ != nullptr) {
             UnhookWindowsHookEx(keyboard_hook_);
@@ -4679,6 +4686,7 @@ public:
 
         launcher_ = std::make_unique<LauncherWindow>(this);
         AddTrayIcon();
+        SetTimer(host_, kReminderTimer, 1000, nullptr);
         keyboard_hook_ = SetWindowsHookExW(WH_KEYBOARD_LL, KeyboardHookProc,
                                            GetModuleHandleW(nullptr), 0);
         if (keyboard_hook_ == nullptr) {
@@ -5133,6 +5141,45 @@ private:
         }
     }
 
+    void NotifyReminder(const Reminder& reminder) {
+        NOTIFYICONDATAW data{};
+        data.cbSize = sizeof(data);
+        data.hWnd = host_;
+        data.uID = 1;
+        data.uFlags = NIF_INFO;
+        wcsncpy_s(data.szInfoTitle, L"TwoSemi reminder", _TRUNCATE);
+        const std::wstring text = reminder.text.empty() ? L"Reminder due" : reminder.text;
+        wcsncpy_s(data.szInfo, text.c_str(), _TRUNCATE);
+        data.dwInfoFlags = NIIF_INFO;
+        data.uTimeout = 10000;
+        Shell_NotifyIconW(NIM_MODIFY, &data);
+        MessageBeep(MB_ICONEXCLAMATION);
+    }
+
+    void TickReminders() {
+        const std::wstring now = NowUtcIso();
+        const std::vector<Reminder> reminders = database_.LoadReminders();
+        std::set<std::wstring> active_ids;
+        for (const Reminder& reminder : reminders) {
+            if (reminder.completed_at_utc.empty() && !reminder.due_at_utc.empty()) {
+                active_ids.insert(reminder.id);
+                if (reminder.due_at_utc <= now && notified_reminder_ids_.insert(reminder.id).second) {
+                    NotifyReminder(reminder);
+                } else if (reminder.due_at_utc > now) {
+                    notified_reminder_ids_.erase(reminder.id);
+                }
+            }
+        }
+        for (auto iterator = notified_reminder_ids_.begin();
+             iterator != notified_reminder_ids_.end();) {
+            if (!active_ids.contains(*iterator)) {
+                iterator = notified_reminder_ids_.erase(iterator);
+            } else {
+                ++iterator;
+            }
+        }
+    }
+
     void UpdateTrayTip() {
         if (host_ == nullptr) {
             return;
@@ -5174,6 +5221,10 @@ private:
                 }
                 if (w_param == kFocusTimer) {
                     app->TickFocus();
+                    return 0;
+                }
+                if (w_param == kReminderTimer) {
+                    app->TickReminders();
                     return 0;
                 }
                 break;
@@ -5307,6 +5358,13 @@ private:
             ShowLauncher(false);
             return;
         }
+        if (message == NIN_BALLOONUSERCLICK) {
+            ShowLauncher(false);
+            if (launcher_ != nullptr) {
+                launcher_->OpenReminders();
+            }
+            return;
+        }
         if (message != WM_RBUTTONUP) {
             return;
         }
@@ -5412,6 +5470,7 @@ private:
     ULONGLONG focus_remaining_seconds_ = 0;
     ULONGLONG focus_last_tick_ = 0;
     std::vector<std::wstring> focus_domains_;
+    std::set<std::wstring> notified_reminder_ids_;
     bool control_held_ = false;
     bool activation_armed_ = false;
     bool consume_semicolon_keyup_ = false;
@@ -5530,12 +5589,14 @@ LauncherWindow::~LauncherWindow() {
     DeleteObject(regular_font_);
     DeleteObject(bold_font_);
     DeleteObject(small_font_);
+    DeleteObject(footer_font_);
 }
 
 void LauncherWindow::CreateControls() {
     regular_font_ = UiFont(10);
     bold_font_ = UiFont(11);
     small_font_ = UiFont(8);
+    footer_font_ = UiFont(11);
     search_ = CreateWindowExW(0, L"EDIT", L"",
                               WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
                               0, 32, kLauncherWidth, 22,
@@ -5546,13 +5607,14 @@ void LauncherWindow::CreateControls() {
                                0, 66, kLauncherWidth, 280,
                                window_, reinterpret_cast<HMENU>(202), GetModuleHandleW(nullptr), nullptr);
     hint_ = CreateWindowW(L"STATIC", L"",
-                          WS_CHILD | WS_VISIBLE | SS_LEFT,
-                          4, 350, kLauncherWidth - 8, 18,
+                          WS_CHILD | WS_VISIBLE | SS_LEFT | SS_CENTERIMAGE,
+                          4, 348, kLauncherWidth - 8, 22,
                           window_, reinterpret_cast<HMENU>(203), GetModuleHandleW(nullptr), nullptr);
 
-    for (HWND control : {search_, results_, hint_}) {
+    for (HWND control : {search_, results_}) {
         SetFont(control, regular_font_);
     }
+    SetFont(hint_, footer_font_);
 
     SetPropW(search_, kLauncherThisProperty, reinterpret_cast<HANDLE>(this));
     SetPropW(results_, kLauncherThisProperty, reinterpret_cast<HANDLE>(this));
@@ -5853,21 +5915,66 @@ void LauncherWindow::Refresh() {
         }
         SendMessageW(results_, LB_SETCURSEL, static_cast<WPARAM>(selection), 0);
     }
-    const std::wstring hint = todo_group_view_
-                                  ? L"Enter toggles task  |  F2 edits  |  Alt+Left goes back  |  Delete removes"
-                                  : todo_groups_view_
-                                        ? L"Enter opens group  |  Ctrl+Enter edits  |  Alt+Left goes back  |  Delete removes"
-                                  : note_view_
-                                        ? L"Enter inserts note  |  Ctrl+Enter edits  |  Delete removes  |  Alt+Left goes back"
-                                        : reminder_view_
-                                              ? L"Enter edits  |  Ctrl+Enter edits  |  C completes  |  Delete removes  |  S snoozes"
-                                              : streak_view_
-                                        ? L"Enter/C checks today  |  F2 edits  |  Alt+Left goes back  |  Delete removes"
-                                        : chat_view_
-                                              ? L"Enter opens chat  |  F2 renames  |  Alt+Left goes back  |  Delete removes"
-                                              : L"Enter opens  |  Ctrl+Enter edits  |  Delete removes  |  P pauses  |  X stops  |  Escape closes";
-    SetWindowTextW(hint_, hint.c_str());
+    UpdateHint();
     InvalidateRect(results_, nullptr, FALSE);
+}
+
+void LauncherWindow::UpdateHint() {
+    std::wstring hint;
+    if (const LauncherItem* item = SelectedItem(); item != nullptr) {
+        switch (item->kind) {
+        case LauncherItemKind::NewNote:
+        case LauncherItemKind::NewReminder:
+        case LauncherItemKind::NewTodoGroup:
+        case LauncherItemKind::NewStreak:
+        case LauncherItemKind::NewChat:
+        case LauncherItemKind::NewTodoTask:
+            hint = L"Enter create";
+            break;
+        case LauncherItemKind::ViewNotes:
+        case LauncherItemKind::ViewReminders:
+        case LauncherItemKind::ViewTodoGroups:
+        case LauncherItemKind::ViewStreaks:
+        case LauncherItemKind::ViewChats:
+        case LauncherItemKind::ConfigureModels:
+            hint = L"Enter open";
+            break;
+        case LauncherItemKind::StartFocus:
+            hint = L"Enter start";
+            break;
+        case LauncherItemKind::FocusStatus:
+            hint = L"Enter view";
+            break;
+        case LauncherItemKind::FocusPause:
+            hint = L"Enter pause/resume";
+            break;
+        case LauncherItemKind::FocusStop:
+            hint = L"Enter stop";
+            break;
+        case LauncherItemKind::Note:
+            hint = L"Enter fill  |  Ctrl+Enter edit  |  Del remove";
+            break;
+        case LauncherItemKind::Reminder:
+            hint = L"Enter edit  |  Del remove";
+            break;
+        case LauncherItemKind::TodoGroup:
+            hint = L"Enter open  |  Ctrl+Enter edit  |  Del remove";
+            break;
+        case LauncherItemKind::Streak:
+            hint = L"Enter check  |  Ctrl+Enter edit  |  Del remove";
+            break;
+        case LauncherItemKind::ChatThread:
+            hint = L"Enter open  |  Ctrl+Enter edit  |  Del remove";
+            break;
+        case LauncherItemKind::TodoTask:
+            hint = L"Enter check  |  Ctrl+Enter edit  |  Del remove";
+            break;
+        }
+    }
+    if (todo_group_view_ || todo_groups_view_ || note_view_ || reminder_view_ || streak_view_ || chat_view_) {
+        hint += L"  |  Alt+Left back";
+    }
+    SetWindowTextW(hint_, hint.c_str());
 }
 
 LauncherItem* LauncherWindow::SelectedItem() {
@@ -5887,6 +5994,7 @@ void LauncherWindow::MoveSelection(int delta) {
     const int next = std::clamp(static_cast<int>(current == LB_ERR ? 0 : current) + delta,
                                 0, static_cast<int>(count - 1));
     SendMessageW(results_, LB_SETCURSEL, next, 0);
+    UpdateHint();
     InvalidateRect(results_, nullptr, FALSE);
 }
 
@@ -6005,36 +6113,6 @@ void LauncherWindow::HandleKey(WPARAM key) {
         break;
     case VK_DELETE:
         DeleteSelected();
-        break;
-    case 'C':
-        if (SelectedItem() != nullptr && SelectedItem()->kind == LauncherItemKind::Reminder &&
-            SelectedItem()->index < reminders_.size()) {
-            app_->ToggleReminder(reminders_[SelectedItem()->index]);
-        } else if (SelectedItem() != nullptr && SelectedItem()->kind == LauncherItemKind::TodoTask &&
-                   todo_group_view_ && active_todo_group_ < todo_groups_.size() &&
-                   SelectedItem()->index < todo_groups_[active_todo_group_].items.size()) {
-            app_->ToggleTodoTask(todo_groups_[active_todo_group_],
-                                 todo_groups_[active_todo_group_].items[SelectedItem()->index]);
-        } else if (SelectedItem() != nullptr && SelectedItem()->kind == LauncherItemKind::Streak &&
-                   SelectedItem()->index < streaks_.size()) {
-            app_->ToggleStreak(streaks_[SelectedItem()->index]);
-        }
-        break;
-    case 'S':
-        if (SelectedItem() != nullptr && SelectedItem()->kind == LauncherItemKind::Reminder &&
-            SelectedItem()->index < reminders_.size()) {
-            app_->SnoozeReminder(reminders_[SelectedItem()->index]);
-        }
-        break;
-    case 'P':
-        if (SelectedItem() != nullptr && SelectedItem()->kind == LauncherItemKind::FocusPause) {
-            app_->ToggleFocusPause();
-        }
-        break;
-    case 'X':
-        if (SelectedItem() != nullptr && SelectedItem()->kind == LauncherItemKind::FocusStop) {
-            app_->StopFocus();
-        }
         break;
     case VK_ESCAPE:
         app_->HideLauncher();
@@ -6171,8 +6249,7 @@ LRESULT CALLBACK LauncherWindow::ListProc(HWND window, UINT message, WPARAM w_pa
             return 0;
         }
         if (w_param == VK_UP || w_param == VK_DOWN || w_param == VK_RETURN || w_param == VK_ESCAPE ||
-            w_param == VK_F2 || w_param == VK_DELETE || w_param == 'C' || w_param == 'S' ||
-            w_param == 'P' || w_param == 'X') {
+            w_param == VK_F2 || w_param == VK_DELETE) {
             launcher->HandleKey(w_param);
             return 0;
         }
@@ -6205,6 +6282,10 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
     case WM_COMMAND:
         if (HIWORD(w_param) == EN_CHANGE && LOWORD(w_param) == 201) {
             launcher->Refresh();
+            return 0;
+        }
+        if (HIWORD(w_param) == LBN_SELCHANGE && LOWORD(w_param) == 202) {
+            launcher->UpdateHint();
             return 0;
         }
         if (HIWORD(w_param) == LBN_DBLCLK && LOWORD(w_param) == 202) {
@@ -6258,7 +6339,7 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                 SetTextColor(draw->hDC, selected ? RGB(232, 244, 234) : (is_action ? kAccent : kMutedText));
                 TextOutW(draw->hDC, draw->rcItem.left + 4, draw->rcItem.top + 4, &marker, 1);
                 RECT title_rect = draw->rcItem;
-                title_rect.left += 18;
+                title_rect.left += 22;
                 title_rect.top += 4;
                 title_rect.right -= 4;
                 SetTextColor(draw->hDC, selected ? RGB(232, 244, 234) : kText);
@@ -6267,7 +6348,7 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
                 if (!launcher->items_[index].detail.empty()) {
                     SelectObject(draw->hDC, launcher->small_font_);
                     RECT detail_rect = draw->rcItem;
-                    detail_rect.left += 18;
+                    detail_rect.left += 22;
                     detail_rect.top += 28;
                     detail_rect.right -= 4;
                     SetTextColor(draw->hDC, selected ? RGB(218, 229, 246) : kMutedText);
@@ -6321,9 +6402,17 @@ LRESULT CALLBACK LauncherWindow::WindowProc(HWND window, UINT message, WPARAM w_
         FillRect(dc, &client, background);
         DeleteObject(background);
         SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, kMutedText);
         HFONT previous_font = static_cast<HFONT>(SelectObject(dc, launcher->regular_font_));
-        TextOutW(dc, 4, 5, launcher->view_title_.c_str(), static_cast<int>(launcher->view_title_.size()));
+        SetTextColor(dc, kMutedText);
+        constexpr wchar_t close_hint[] = L"Esc close";
+        SIZE close_size{};
+        GetTextExtentPoint32W(dc, close_hint, static_cast<int>(std::size(close_hint) - 1), &close_size);
+        const int close_left = std::max(4, static_cast<int>(client.right - close_size.cx - 4));
+        RECT title_rect{4, 3, close_left - 8, 27};
+        DrawTextW(dc, launcher->view_title_.c_str(), -1, &title_rect,
+                  DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
+        RECT close_rect{close_left, 3, client.right - 4, 27};
+        DrawTextW(dc, close_hint, -1, &close_rect, DT_SINGLELINE | DT_LEFT | DT_NOPREFIX);
         SelectObject(dc, previous_font);
         EndPaint(window, &paint);
         return 0;
