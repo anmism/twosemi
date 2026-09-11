@@ -1,4 +1,5 @@
 #include <windows.h>
+#include "resource.h"
 #include <commdlg.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -506,8 +507,26 @@ HICON LoadPngIcon(int size) {
     return icon;
 }
 
+HICON LoadEmbeddedIcon(int size) {
+    return static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr),
+                                         MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON,
+                                         size, size, LR_DEFAULTCOLOR));
+}
+
 void SetAppWindowClassIcon(WNDCLASSW& window_class) {
     window_class.hIcon = g_app_icon_large;
+}
+
+void SetAppWindowIcons(HWND window) {
+    if (window == nullptr) {
+        return;
+    }
+    if (g_app_icon_large != nullptr) {
+        SendMessageW(window, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(g_app_icon_large));
+    }
+    if (g_app_icon_small != nullptr) {
+        SendMessageW(window, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(g_app_icon_small));
+    }
 }
 
 void InitializeAppIcons() {
@@ -518,8 +537,14 @@ void InitializeAppIcons() {
             return;
         }
     }
-    g_app_icon_large = LoadPngIcon(32);
-    g_app_icon_small = LoadPngIcon(16);
+    g_app_icon_large = LoadEmbeddedIcon(32);
+    g_app_icon_small = LoadEmbeddedIcon(16);
+    if (g_app_icon_large == nullptr) {
+        g_app_icon_large = LoadPngIcon(32);
+    }
+    if (g_app_icon_small == nullptr) {
+        g_app_icon_small = LoadPngIcon(16);
+    }
 }
 
 void ShutdownAppIcons() {
@@ -5580,6 +5605,7 @@ LauncherWindow::LauncherWindow(TwoSemiApp* app) : app_(app) {
         nullptr,
         GetModuleHandleW(nullptr),
         this);
+    SetAppWindowIcons(window_);
 }
 
 LauncherWindow::~LauncherWindow() {
